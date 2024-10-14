@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Graph Visualization</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f0f0f0;
+    }
+    #graph {
+      width: 100%;
+      height: 100vh;
+    }
+    .link {
+      stroke: #999;
+      stroke-opacity: 0.6;
+      transition: stroke-width 0.2s;
+    }
+    .node {
+      stroke: #fff;
+      stroke-width: 2px;
+      cursor: pointer;
+      transition: r 0.2s;
+    }
+    .label {
+      font-size: 12px;
+      pointer-events: none;
+    }
+    .edge-label {
+      font-size: 10px;
+      fill: #555;
+      text-anchor: middle;
+      dominant-baseline: central;
+      pointer-events: none;
+    }
+    #info-panel {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background-color: rgba(255, 255, 255, 0.9);
+      padding: 10px;
+      border-radius: 5px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      max-width: 300px;
+    }
+  </style>
+</head>
+<body>
+  <div id="graph"></div>
+  <div id="info-panel"></div>
+  <script>
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    const svg = d3.select('#graph')
+      .append('svg')
+      .attr('width', width)
+      .attr('height', height);
+
+    const simulation = d3.forceSimulation()
+      .force('link', d3.forceLink().id(d => d.id).distance(150))
+      .force('charge', d3.forceManyBody().strength(-300))
+      .force('center', d3.forceCenter(width / 2, height / 2));
+
+    // Fetch data from the FastAPI endpoint
+    fetch('/data')
+      .then(response => response.json())
+      .then(data => {
+        const nodes = data.entities.map(entity => ({ ...entity, id: entity.name }));
+        const links = data.edges.map(edge => ({ ...edge, id: `${edge.source}-${edge.target}` }));
+
+        const link = svg.append('g')
+          .selectAll('line')
+          .data(links)
+          .enter().append('line')
+          .attr('class', 'link')
+          .attr('stroke-width', 3);  // Increased stroke width
+
+        const edgeLabel = svg.append('g')
+          .selectAll('text')
+          .data(links)
+          .enter().append('text')
+          .attr('class', 'edge-label')
+          .text(d => d.relation);
+
+        const node = svg.append('g')
+          .selectAll('circle')
+          .data(nodes)
+          .enter().append('circle')
+          .attr('class', 'node')
+          .attr('r', 8)
+          .attr('fill', d => d3.schemeCategory10[Math.floor(Math.random() * 10)])
+          .call(d3.drag()
+            .on('start', dragStarted)
+            .on('drag', dragged)
+            .on('end', dragEnded));
+
+        const label = svg.append('g')
+          .selectAll('text')
+          .data(nodes)
+          .enter().append('text')
+          .attr('class', 'label')
+          .attr('dx', 12)
+          .attr('dy', '.35em')
+          .text(d => d.id);
+
+        simulation
+          .nodes(nodes)
+          .on('tick', ticked);
+
+        simulation.force('link')
+          .links(links);
+
+        function ticked() {
+          link
+            .attr('x1', d => d.source.x)
+            .attr('y1', d => d.source.y)
+            .attr('x2', d => d.target.x)
+            .attr('y2', d => d.target.y);
+
+          edgeLabel
+            .attr('x', d => (d.source.x + d.target.x) / 2)
+            .attr('y', d => (d.source.y + d.target.y) / 2);
+
+          node
+            .attr('cx', d => d.x)
+            .attr('cy', d => d.y);
+
+          label
+            .attr('x', d => d.x)
+            .attr('y', d => d.y);
+        }
+
+        function dragStarted(event, d) {
+          if (!event.active) simulation.alphaTarget(0.3).restart();
+          d.fx = d.x;
+          d.fy = d.y;
+        }
+
+        function dragged(event, d) {
+          d.fx = event.x;
+          d.fy = event.y;
+        }
+
+        function dragEnded(event, d) {
+          if (!event.active) simulation.alphaTarget(0);
+          d.fx = null;
+          d.fy = null;
+        }
+
+        // Add hover effects
+        node.on('mouseover', function(event, d) {
+          d3.select(this).attr('r', 12);
+        }).on('mouseout', function(event, d) {
+          d3.select(this).attr('r', 8);
+        });
+
+        link.on('mouseover', function(event, d) {
+          d3.select(this).attr('stroke-width', 5);
+        }).on('mouseout', function(event, d) {
+          d3.select(this).attr('stroke-width', 3);
+        });
+
+        // Add click functionality
+        node.on('click', showNodeInfo);
+        link.on('click', showLinkInfo);
+
+        function showNodeInfo(event, d) {
+          const infoPanel = d3.select('#info-panel');
+          infoPanel.html(`
+            <h3>${d.name}</h3>
+            <p>${d.short_discription}</p>
+          `);
+        }
+
+        function showLinkInfo(event, d) {
+          const infoPanel = d3.select('#info-panel');
+          infoPanel.html(`
+            <h3>${d.source.name} → ${d.target.name}</h3>
+            <p><strong>Relation:</strong> ${d.relation}</p>
+            <p>${d.short_discription}</p>
+          `);
+        }
+      });
+  </script>
+</body>
+</html>
