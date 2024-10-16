@@ -10,6 +10,19 @@ GraphGenie is an innovative tool that leverages the power of large language mode
 ### Prerequisites
 - Python 3.x
 - Install required packages using `pip install -r requirements.txt`
+- If using Ollama, install the `ollama-instructor` library:
+  ```bash
+  pip install ollama-instructor
+  ```
+
+### Configuration
+
+- Open `main.py`.
+- Set the `USE_OLLAMA` variable to `True` if you want to use the Ollama API, or `False` to use the OpenAI API.
+
+  ```python
+  USE_OLLAMA = True  # Use Ollama API
+  ```
 
 ### Running the Application
 
@@ -21,7 +34,7 @@ GraphGenie is an innovative tool that leverages the power of large language mode
    python main.py
    ```
 
-   This script will read the input text from `transcript.txt`, extract entities and edges using OpenAI's API, and store them in an SQLite database.
+   This script will read the input text from `transcript.txt`, extract entities and edges using the selected API, and store them in an SQLite database.
 
 2. **Run the Web Application**
 
@@ -35,7 +48,7 @@ GraphGenie is an innovative tool that leverages the power of large language mode
 
 ### Additional Information
 
-- Ensure that your OpenAI API key is set in the environment variable `OPENAI_API_KEY`.
+- Ensure that your OpenAI API key is set in the environment variable `OPENAI_API_KEY` if using OpenAI.
 - The web application provides endpoints to view the extracted entities and edges in JSON format and a root endpoint to render the homepage.
 
 ## License

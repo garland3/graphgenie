@@ -1,14 +1,23 @@
+USE_OLLAMA = True  # Set to True to use Ollama, False to use OpenAI
 GET_EDGES = True
 GET_ENTITIES = True
 
-from openai import OpenAI
+# Import the necessary client based on the USE_OLLAMA flag
+if USE_OLLAMA:
+    from ollama_instructor.ollama_instructor_client import OllamaInstructorClient
+else:
+    from openai import OpenAI
+
 import os
 import sqlite3
 from pydantic import BaseModel
 from utils import extract_edges, extract_entities
 
-# Initialize the OpenAI client
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+# Initialize the appropriate client
+if USE_OLLAMA:
+    client = OllamaInstructorClient(host='http://localhost:11434')
+else:
+    client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 class Entity(BaseModel):
     name: str
@@ -60,7 +69,9 @@ class Database:
 
     def insert_entities(self, entities):
         entity_insert_query = 'INSERT INTO entities (name, short_discription) VALUES (?, ?)'
+        print(f"Type of entities: {type(entities)}")
         for entity in entities:
+            print(f"Inserting entity: {entity}")    
             self.insert_into_table(entity_insert_query, (entity.name, entity.short_discription))
         self.commit_changes()
 
@@ -120,7 +131,7 @@ def main():
             text = file.read()
 
         # Extract entities
-        result = extract_entities(text, client, NamedEntities)
+        result = extract_entities(text, client, NamedEntities, USE_OLLAMA)
 
         # Setup and insert entities into the database
         db.setup_entity_table()
@@ -138,7 +149,7 @@ def main():
             text = file.read()
 
         # Extract edges
-        result = extract_edges(text, entities, client, NamedEdges)
+        result = extract_edges(text, entities, client, NamedEdges, USE_OLLAMA)
 
         # Setup and insert edges into the database
         db.setup_edge_table()
